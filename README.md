@@ -1,0 +1,149 @@
+# Healthcare Information Guide Agent
+
+An LLM-powered ReAct agent that provides general healthcare guidance based on user-described symptoms. Built with LangChain, the HuggingFace `harmesh95/healthcare-disease-knowledge` dataset, and the Groq API.
+
+> ⚠️ **Disclaimer**: This system provides general health information only. It is **not** a diagnostic tool and does **not** replace professional medical advice. Always consult a qualified healthcare professional.
+
+---
+
+## Project Structure
+
+```
+Healthcare-AI/
+├── main.py                  # CLI entry point
+├── agent.py                 # LangChain ReAct agent (ChatPromptTemplate)
+├── memory.py                # ConversationBufferMemory (message-based history)
+├── dataset_loader.py        # HuggingFace dataset loader + search
+├── reasoning_logger.py      # JSON reasoning trace logger
+├── app.py                   # FastAPI backend server
+├── ui/                      # React + Tailwind CSS frontend
+├── tools/
+│   ├── __init__.py
+│   ├── healthcare_db_tool.py  # Tool 1 — local dataset search
+│   └── web_search_tool.py     # Tool 2 — web medical guideline search (ddgs scraper)
+├── logs/                    # Auto-created; session reasoning traces saved here
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+---
+
+## Prerequisites
+
+- Python 3.10 or later
+- A [Groq API key](https://console.groq.com/keys)
+
+---
+
+## Installation
+
+```bash
+# 1. Clone / navigate to the project
+cd "C:\Users\kanad\HealthCare-Information-Guide-agent"
+
+# 2. Create a virtual environment
+py -3.11 -m venv venv
+
+# 3. Activate it
+venv\Scripts\activate
+
+# 4. Install all dependencies
+pip install -r requirements.txt
+```
+
+---
+
+## Configuration
+
+```bash
+# Copy the template
+cp .env.example .env
+
+# Open .env and fill in your key
+# GROQ_API_KEY=gsk_...
+# GROQ_MODEL=llama3-8b-8192   (optional, default is llama3-8b-8192)
+```
+
+---
+
+## Running the Application
+
+The project features a modern Web UI with a FastAPI backend. You will need two terminal windows.
+
+**Terminal 1 (Backend Server):**
+```bash
+python3 app.py
+```
+*The first run will download the HuggingFace dataset (~a few MB). Subsequent runs use the cache.*
+
+**Terminal 2 (Frontend UI):**
+```bash
+cd ui
+npm run dev
+```
+Then, open your browser to `http://localhost:5173/` to interact with the agent.
+
+*(Note: You can still run the CLI version using `python3 main.py`).*
+
+---
+
+## Example Session
+
+```
+You: I have a fever and a headache
+
+[Agent — Turn 1] Thinking …
+
+Thought: Identify symptoms: fever, headache. Search local DB first.
+Tool: HealthcareKnowledgeDB
+Tool Input: fever headache
+Observation: [disease records from dataset]
+
+Thought: Now get official treatment guidelines.
+Tool: WebMedicalSearch
+Tool Input: WHO fever headache treatment guidelines
+Observation: [WHO/CDC snippets]
+
+Final Answer: Based on the healthcare database and WHO guidelines, fever 
+combined with headache may be associated with influenza or other infections. 
+Recommended care: rest, hydration, and over-the-counter fever reducers. 
+See a doctor if fever exceeds 39°C, persists more than 3 days, or is 
+accompanied by stiff neck or rash. ⚠ DISCLAIMER: …
+```
+
+---
+
+## Reasoning Logs
+
+Every session saves a structured JSON log to `logs/session_<timestamp>.json`:
+
+```json
+[
+  {
+    "session_id": "20240315_190500",
+    "turn": 1,
+    "user_input": "I have a fever and a headache",
+    "intermediate_steps": [
+      {
+        "thought": "Identify symptoms …",
+        "tool": "HealthcareKnowledgeDB",
+        "tool_input": "fever headache",
+        "observation": "…"
+      }
+    ],
+    "final_answer": "…"
+  }
+]
+```
+
+---
+
+## Safety & Limitations
+
+| Rule | Implementation |
+|------|---------------|
+| No medical diagnosis | Enforced in system prompt |
+| Always recommend doctor for serious symptoms | Hard-coded in prompt |
+| General guidance only | Safety disclaimer in every final answer |
+| No personally identifiable data collected | Local memory only; clears on restart |
